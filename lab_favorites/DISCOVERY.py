@@ -24,56 +24,38 @@ def squareAndResizeImage(image, resize):
   return image
 
 
-# https://stackoverflow.com/questions/13405956/convert-an-image-rgb-lab-with-python
 def rgb2lab(inputColor):
-  num = 0
-  RGB = [0, 0, 0]
+  # Convert RGB [0,255] to [0,1]
+  r, g, b = [x / 255.0 for x in inputColor]
 
-  for value in inputColor:
-    value = float(value) / 255
+  # Apply sRGB companding
+  def compand(c):
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
 
-    if value > 0.04045:
-      value = ( ( value + 0.055 ) / 1.055 ) ** 2.4
-    else :
-      value = value / 12.92
+  r, g, b = compand(r), compand(g), compand(b)
 
-    RGB[num] = value * 100
-    num = num + 1
+  # Convert to XYZ
+  X = r * 0.4124 + g * 0.3576 + b * 0.1805
+  Y = r * 0.2126 + g * 0.7152 + b * 0.0722
+  Z = r * 0.0193 + g * 0.1192 + b * 0.9505
 
-  XYZ = [0, 0, 0]
+  # Normalize for D65 white point
+  X /= 0.95047
+  Y /= 1.00000
+  Z /= 1.08883
 
-  X = RGB [0] * 0.4124 + RGB [1] * 0.3576 + RGB [2] * 0.1805
-  Y = RGB [0] * 0.2126 + RGB [1] * 0.7152 + RGB [2] * 0.0722
-  Z = RGB [0] * 0.0193 + RGB [1] * 0.1192 + RGB [2] * 0.9505
-  XYZ[ 0 ] = round( X, 4 )
-  XYZ[ 1 ] = round( Y, 4 )
-  XYZ[ 2 ] = round( Z, 4 )
+  # LAB conversion helper
+  def f(t):
+    return t ** (1/3) if t > 0.008856 else (7.787 * t) + (16 / 116)
 
-  XYZ[ 0 ] = float( XYZ[ 0 ] ) / 95.047         # ref_X =  95.047   Observer= 2°, Illuminant= D65
-  XYZ[ 1 ] = float( XYZ[ 1 ] ) / 100.0          # ref_Y = 100.000
-  XYZ[ 2 ] = float( XYZ[ 2 ] ) / 108.883        # ref_Z = 108.883
+  fx, fy, fz = f(X), f(Y), f(Z)
 
-  num = 0
-  for value in XYZ:
-    if value > 0.008856:
-      value = value ** ( 0.3333333333333333 )
-    else:
-      value = ( 7.787 * value ) + ( 16 / 116 )
+  L = (116 * fy) - 16
+  a = 500 * (fx - fy)
+  b = 200 * (fy - fz)
 
-    XYZ[num] = value
-    num = num + 1
+  return [L, a, b]
 
-  Lab = [0, 0, 0]
-
-  L = ( 116 * XYZ[ 1 ] ) - 16
-  a = 500 * ( XYZ[ 0 ] - XYZ[ 1 ] )
-  b = 200 * ( XYZ[ 1 ] - XYZ[ 2 ] )
-
-  Lab [ 0 ] = round( L, 4 )
-  Lab [ 1 ] = round( a, 4 )
-  Lab [ 2 ] = round( b, 4 )
-
-  return Lab
 
 
 # Convert (and resize) an Image to an Lab array
